@@ -1,0 +1,5 @@
+# This is where our ansible varibles are going to go so we can SSH into the hosts in our inventory
+---
+ansible_port: 22 # SSH port
+ansible_user: ec2-user # EC2 Username
+ansible_ssh_private_key_file: ./ansible_key.pem # Path to my private key
