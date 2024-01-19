@@ -1,0 +1,58 @@
+---
+# tasks file for node_create
+- name: Launch EC2 instance
+  block:
+    - name: Make sure boto, boto3, botocore are installed
+      pip:
+        name: "{{ item }}"
+      loop:
+        - boto
+        - boto3
+        - botocore
+    
+    - name: Create EC2 Instance
+      ec2_instance:
+        name: bvanek-ansible-worker
+        region: us-east-1
+        security_group: default
+        vpc_subnet_id: subnet-03332d675fbe7460f
+        image_id: ami-022e1a32d3f742bd8
+        instance_type: t3.micro
+        key_name: bvanek
+        iam_instance_profile: arn:aws:iam::797918408294:instance-profile/ansible-role
+        exact_count: 1
+        wait: true
+        network:
+          assign_public_ip: true
+        state: present
+        tags:
+          Owner: "Brandon Vanek"
+      register: ec2
+      tags: bvanek-ansible-worker
+    
+    - name: Wait for SSH to come up
+      local_action:
+        module: wait_for
+        host: "{{ item.public_ip_address }}"
+        port: 22
+        delay: 10
+        timeout: 240
+      when: ec2.changed == true
+      loop: "{{ ec2.instances }}"
+    
+    - name: Determine number of instances
+      set_fact:
+        instance_ids_count: "{{ ec2.instances | length }}"
+
+    - name: Instance IDs
+      debug:
+        msg: "{{ item }}"
+      loop: "{{ ec2.instance_ids }}"
+    
+    - name: Number of running instances
+      debug:
+        msg: "{{ instance_ids_count }}"
+
+  # By specifying never on the tag of this block of code
+  # this block will never run unless called with the create tag
+  tags: ['never', 'create']

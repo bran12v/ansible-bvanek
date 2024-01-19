@@ -1,0 +1,62 @@
+---
+# tasks file for send_logs
+- name: Send logs to S3
+  block:
+    - name: Install the latest version of apache # sudo yum install httpd
+      yum:
+        name: httpd
+        state: latest
+
+    - name: start the httpd service, if not started # sudo systemctl start httpd
+      service:
+        name: httpd
+        state: started
+        enabled: true
+
+    - name: remove index file, if created # /var/www/html/index.html
+      file:
+        path: /var/www/html/index.html
+        state: absent
+
+    - name: add index file # /var/www/html/index.html
+      file:
+        path: /var/www/html/index.html
+        state: touch
+
+    - name: add line in file
+      lineinfile:
+        path: /var/www/html/index.html
+        line: <h1> This is Brandon's website! </h1> 
+    
+    - name: Make sure python and pip are installed
+      yum:
+        name:
+          - python
+          - pip
+
+    - name: Make sure boto, boto3, and botocore are installed
+      pip:
+        name: "{{ item }}"
+      loop:
+        - boto
+        - boto3
+        - botocore
+    
+    - name: Save folder name
+      set_fact:
+        folder_name: "{{ hostvars[inventory_hostname]['public_dns_name'] }}"
+      
+    # - debug: msg="{{ folder_name }}"
+
+    - name: Create folder for instance in S3
+      aws_s3:
+        bucket: bvanek-logs
+        mode: create
+        object: "{{ folder_name }}"
+    
+    - name: Deposit error log in S3 folder
+      aws_s3:
+        bucket: bvanek-logs
+        mode: put
+        object: "{{ folder_name }}/error_log"
+        src: "/etc/httpd/logs/error_log"
